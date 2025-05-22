@@ -190,7 +190,7 @@ class SpeechTokenizer(torch.nn.Module):
     def __init__(
         self,
         checkpoint: Union[str, None] = "data/checkpoints/xlsr2_1b_v2_custom.pt",
-        kmeans_path: str = "data/checkpoints/kmeans_10k.npy",
+        kmeans_layer_checkpoint: str = "data/checkpoints/kmeans_10k.npy",
         dtype: DataType = torch.float16,
         device: Optional[Device] = None,
     ) -> None:
@@ -201,7 +201,7 @@ class SpeechTokenizer(torch.nn.Module):
             device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
 
         self.encoder = SpeechEncoder(dtype=dtype, device=device, checkpoint=checkpoint, max_layer=35)
-        self.kmeans = KmeansModel(kmeans_path, device=self.encoder.device, dtype=self.encoder.dtype)
+        self.kmeans = KmeansModel(kmeans_layer_checkpoint, device=self.encoder.device, dtype=self.encoder.dtype)
         self.gpu_memory_manager = GPUMemoryManager(threshold_percent=85, min_interval_seconds=1)
         self.cuda_stream = torch.cuda.Stream()
 
@@ -249,7 +249,7 @@ if __name__ == "__main__":
         device=device,
         dtype=dtype,
         checkpoint="data/checkpoints/xlsr2_1b_v2_custom.pt",
-        kmeans_path="data/checkpoints/kmeans_10k.npy",
+        kmeans_layer_checkpoint="data/checkpoints/kmeans_10k.npy",
     )
 
     # Extract units
