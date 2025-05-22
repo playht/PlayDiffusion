@@ -16,7 +16,7 @@ class InpainterModelManager:
         self.speech_tokenizer_sample_rate = self.speech_tokenizer_kwargs.pop("sample_rate")
         self.tokenizer, self.speech_tokenizer = (
             self.load_tokenizers(
-                config=self.tokenizer_kwargs,
+                tokenizer_config=self.tokenizer_kwargs,
                 speech_tokenizer_config=self.speech_tokenizer_kwargs,
             )
         )
@@ -70,7 +70,7 @@ class InpainterModelManager:
     def load_voice_encoder(self, config: dict):
         from play_inpainter.models.voice_encoder.voice_encoder import ConditioningEncoder
 
-        return ConditioningEncoder(**config, device=self.device)
+        return ConditioningEncoder(**config)
 
     def load_inpainter(self, config: dict):
         from play_inpainter.models.inpainter.masklm_text import load_maskgct_inpainter

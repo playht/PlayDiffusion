@@ -71,14 +71,15 @@ class Inpainter():
                 kmeans_layer_checkpoint = kmeans_layer_path,
             ),
             tokenizer = dict(
-                vocab_file = tokenizer_path
+                vocab_file = tokenizer_path,
             ),
             speech_tokenizer = dict(
                 checkpoint = speech_tokenizer_path,
-                kmeans_layer_checkpoint = kmeans_layer_path
+                kmeans_layer_checkpoint = kmeans_layer_path,
+                sample_rate = 16000,
             ),
             mel = dict(
-                sample_rate = 16000
+                sample_rate = 16000,
             ),
             voice_encoder = dict(
                 spec_dim = 100,
@@ -86,7 +87,7 @@ class Inpainter():
                 attn_blocks = 6,
             ),
             inpainter = dict(
-                checkpoint = inpainter_path
+                checkpoint = inpainter_path,
             ),
         )
 
@@ -118,7 +119,7 @@ class Inpainter():
         text_align = jiwer.process_words(input.input_text, input.output_text)
 
         # use the input audio itself for the vocoder embedding
-        vocoder_emb = get_vocoder_embedding(input.audio, self.mm)
+        vocoder_emb = get_vocoder_embedding(input.audio, self.mm).to(self.device)
         self.timer("Get vocoder embedding")
 
         # extract xlsr audio tokens
@@ -547,8 +548,8 @@ class Inpainter():
 
         # vocode the output audio
         with torch.no_grad():
-            audio_g = self.mm.vocoder(output_audio_tokens, vocoder_emb).squeeze()
+            audio_g = self.mm.vocoder(output_audio_tokens, vocoder_emb)
         self.timer("Vocoder")
 
         # encode audio for output
-        return make_16bit_pcm(audio_g)
+        return (self.mm.vocoder.output_frequency, make_16bit_pcm(audio_g))

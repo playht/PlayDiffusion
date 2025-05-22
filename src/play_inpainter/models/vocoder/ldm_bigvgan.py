@@ -4,7 +4,7 @@ import math
 import time
 
 import torch
-import safetensors.torch
+import safetensors
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
@@ -54,9 +54,6 @@ def load_ldm_bigvgan(
     model.eval()
     model.remove_weight_norm()
     model = model.to(device, dtype)
-
-    if batch_vocoder_size > 1:
-        model = BatchedVocoderWrapper(model, batch_vocoder_size, 70, 45)
 
     return model
 

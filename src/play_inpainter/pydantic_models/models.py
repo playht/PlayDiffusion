@@ -1,5 +1,6 @@
-from typing import Dict, List, Literal
+from typing import Dict, List, Literal, Tuple
 
+import numpy as np
 from pydantic import BaseModel, Field
 
 FormatType = Literal["raw", "wav", "mp3", "ogg", "flac", "mulaw", "pcm", "wav_mulaw"]
@@ -7,22 +8,6 @@ FormatType = Literal["raw", "wav", "mp3", "ogg", "flac", "mulaw", "pcm", "wav_mu
 class InpainterBaseInput(BaseModel):
     output_text: str = Field(
         description="Text to inpaint",
-    )
-    output_format: FormatType = Field(
-        default="wav",
-        description="Output format of the audio file",
-    )
-    output_sample_rate: int = Field(
-        default=48_000,
-        ge=8_000,
-        le=48_000,
-        description="Output sample rate of the audio file",
-    )
-    output_speed: float = Field(
-        default=1.0,
-        gt=0.0,
-        le=5.0,
-        description="Output speed of the audio file",
     )
     num_steps: int = Field(
         default=30,

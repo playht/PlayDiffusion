@@ -1,5 +1,8 @@
 import time
+from typing import Tuple
 
+import numpy as np
+import torch
 
 def load_audio_from_file(file_name: str):
     import soundfile as sf
@@ -59,9 +62,7 @@ def get_vocoder_embedding(voice_name: str, mm):
     try:
         voice_resource = VoiceResource.load(voice_name)
     except Exception:
-        print(
-            f"Failed to load voice resource: {voice_name}",
-        )
+        print("Failed to load voice resource")
         raise
 
     _, vocoder_emb = voice_emb_util.get_voice_embeddings(mm, voice_resource)

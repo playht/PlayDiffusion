@@ -25,7 +25,16 @@ dependencies = [
     "tokenizers==0.21.1",
     "librosa==0.11.0",
     "scipy==1.15.3",
+    "einops==0.8.1",
+    "torchtune==0.6.1",
+    "torchao==0.11.0",
 ]
+
+[project.optional-dependencies]
+demo = [
+    "gradio==5.31.0",
+    "openai==1.82.0",
+    ]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/play_inpainter"]

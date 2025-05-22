@@ -54,7 +54,7 @@ def apply_voice_embedding_gain(emb: torch.Tensor, voice_encoder_gain):
     return emb * voice_encoder_gain
 
 
-@torch.inference_mode()
+@torch.no_grad()
 def get_voice_embedding(
     audio: Optional[Union[torch.Tensor, List[torch.Tensor]]],
     normalize_audio: bool = True,
