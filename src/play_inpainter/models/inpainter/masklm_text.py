@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from einops import rearrange
 from typing import Optional
-from play_tts.inpainter.llama_nar import DiffLlama
+from play_inpainter.models.inpainter.llama_nar import DiffLlama
 
 def top_k(logits, k):
     """

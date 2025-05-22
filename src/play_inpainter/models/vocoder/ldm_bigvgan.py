@@ -17,9 +17,9 @@ from typing import Optional
 from torch import pow, sin
 from torch.nn import Conv1d, ConvTranspose1d, Parameter, Linear
 from torch.nn.utils.weight_norm import remove_weight_norm, weight_norm
-from play_tts.util.dot_dict import DotDict
-from play_tts.util.load_model_params_st import load_model_params_st
-from play_tts.ldm.utils.gpu_memory_manager import GPUMemoryManager
+from play_inpainter.utils.dot_dict import DotDict
+from play_inpainter.utils.load_model_params_st import load_model_params_st
+from play_inpainter.utils.gpu_memory_manager import GPUMemoryManager
 
 def load_ldm_bigvgan(
         checkpoint: str,

@@ -2,8 +2,8 @@ from typing import Optional
 import torch
 import torch.nn as nn
 from torchtune.modules import FeedForward, RMSNorm
-from play_tts.inpainter.position_embeddings import RotaryPositionalEmbeddings
-from play_tts.inpainter.llm import TransformerDecoderLayer, NARSelfAttention, prepare_mask
+from play_inpainter.models.inpainter.position_embeddings import RotaryPositionalEmbeddings
+from play_inpainter.models.inpainter.llm import TransformerDecoderLayer, NARSelfAttention, prepare_mask
 
 class DiffLlama(nn.Module):
     def __init__(
