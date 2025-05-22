@@ -2,8 +2,6 @@
 import torch
 from torch import nn
 
-from .parrot_params import *
-
 from play_inpainter.utils.model_util import QKVAttentionLegacy, zero_module, normalization
 
 class AttentionBlock(nn.Module):

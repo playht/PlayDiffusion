@@ -1,0 +1,31 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "play_inpainter"
+version = "0.1.0"
+description = "Audio inpainting package for speech modification"
+requires-python = ">=3.11"
+license = { text = "TODO" }
+dependencies = [
+    "torch==2.6.0",
+    "torchaudio==2.6.0",
+    "numpy==1.26.4",
+    "fairseq2==0.4.4",
+    "nltk==3.8.1",
+    "g2p-en==2.1.0",
+    "jiwer==3.1.0",
+    "pydantic==2.11.5",
+    "soundfile==0.13.1",
+    "boto3==1.38.22",
+    "tqdm==4.67.1",
+    "python-decouple==3.8",
+    "safetensors==0.5.3",
+    "tokenizers==0.21.1",
+    "librosa==0.11.0",
+    "scipy==1.15.3",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/play_inpainter"]

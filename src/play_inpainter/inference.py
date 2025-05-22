@@ -34,12 +34,12 @@ class InpainterChunk:
 
 
 class Inpainter():
-    def __init__(self):
+    def __init__(self, device: str = "cuda"):
         import nltk
         import torch
         from g2p_en import G2p
 
-        self.device = torch.device("cuda")
+        self.device = torch.device(device)
 
         self.preset = self.load_preset()
         self.mm = InpainterModelManager(self.preset, self.device)
