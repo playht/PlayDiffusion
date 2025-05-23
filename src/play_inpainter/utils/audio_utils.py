@@ -55,6 +55,7 @@ def raw_audio_to_torch_audio(raw_audio_np):
     return sr, torch_audio
 
 
+@torch.inference_mode()
 def get_vocoder_embedding(voice_name: str, mm):
     import play_inpainter.utils.voice_emb as voice_emb_util
     from play_inpainter.utils.voice_resource import VoiceResource

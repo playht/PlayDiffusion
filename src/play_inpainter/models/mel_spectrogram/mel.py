@@ -1,30 +1,7 @@
-import os
-
 import torch
 import torchaudio
 
 from play_inpainter.models.mel_spectrogram.tacotron import TacotronSTFT
-
-# Default mel norm file for the model
-MEL_NORM_FILE_V2 = os.path.join(os.path.dirname(__file__), "mel_norms.pth")
-
-_PRESETS = {
-    "voice_conditioning_v2": {
-        # note that sampling_rate is unforunately named, but remains like that for historical reasons
-        # we infact do use this preset with audio with different sample rates and keep this value as is
-        # the correct mel sample rate value would be the one in base_model.mel_sample_rate
-        "sampling_rate": 22050,
-        "mel_norm_file": MEL_NORM_FILE_V2,
-        "mel_implementation": "torch",
-    },
-    "voice_conditioning_v3": {
-        "sampling_rate": 24000,
-        "do_diff_normalization": True,
-        "n_mel_channels": 100,
-        "mel_fmax": 12000.0,
-        "mel_implementation": "tacotron",
-    },
-}
 
 # Stats from the VqVAE training set - kept so both models use the same MEL format
 TACOTRON_MEL_MAX = 2.3143386840820312
@@ -50,35 +27,19 @@ def denormalize_mel(norm_mel, max_ = None, min_ = None):
     return ((norm_mel+1)/2)*(max_-min_)+min_
 
 class MelSpectrogram(torch.nn.Module):
-    @classmethod
-    def load_preset(cls, preset: str, **kwargs):
-        """Load a preset for the MelSpectrogram.
-
-        Args:
-            kwargs: Preset overrides.
-
-        Returns:
-            Instance of the MelSpectrogram configured with the preset.
-        """
-        if preset not in _PRESETS:
-            raise ValueError(f"preset {preset} not found")
-        p = _PRESETS[preset].copy()
-        p.update(kwargs)
-        return cls(**p)
-
     def __init__(
         self,
         filter_length=1024,
         hop_length=256,
         win_length=1024,
-        n_mel_channels=80,
+        n_mel_channels=100,
         mel_fmin=0,
-        mel_fmax=8000,
-        sampling_rate=22050,
+        mel_fmax=12000,
+        sampling_rate=24000,
         normalize=False,
         mel_norm_file=None,
-        do_diff_normalization=False,
-        mel_implementation="torch",
+        do_diff_normalization=True,
+        mel_implementation="tacotron",
     ):
         super().__init__()
         assert mel_implementation in set(['torch', 'tacotron'])

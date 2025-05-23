@@ -5,11 +5,10 @@ class InpainterModelManager:
         from play_inpainter.models.vocoder.ldm_bigvgan import BigVGAN
 
         self.preset = preset
-        self.ar_kwargs = preset["ar"]
+        self.voice_encoder_kwargs = preset["voice_encoder"]
         self.vocoder_kwargs = preset["vocoder"]
         self.tokenizer_kwargs = preset["tokenizer"]
         self.speech_tokenizer_kwargs = preset["speech_tokenizer"]
-        self.mel_kwargs = preset["mel"]
         self.inpainter_kwargs = preset["inpainter"]
         self.device = device
 
@@ -21,9 +20,7 @@ class InpainterModelManager:
             )
         )
 
-        self.mel_sample_rate = self.mel_kwargs["sample_rate"]
-
-        self.ar = self.load_ar(self.ar_kwargs)
+        self.voice_encoder = self.load_voice_encoder(self.voice_encoder_kwargs)
 
         self.vocoder: BigVGAN = self.load_vocoder(self.vocoder_kwargs)
 
@@ -59,14 +56,26 @@ class InpainterModelManager:
 
         return tokenizer, speech_tokenizer
 
-    def load_ar(self, config: dict):
-        from play_inpainter.models.ar.parrot_base_model import BaseModel
-        from play_inpainter.models.ar.parrot_base_sampler import BaseSampler
+    def load_voice_encoder(self, config: dict):
+        from play_inpainter.models.ar.conditioning_encoder import ConditioningEncoder
+        from play_inpainter.models.ar.conditioning_encoder_sampler import ConditioningEncoderSampler
+        import torch
 
-        model = BaseModel(**config)
-        sampler = BaseSampler(model)
+        saved_dict = torch.load(config['checkpoint'], map_location='cpu', weights_only=False)
 
-        return sampler
+        config = saved_dict['config']
+        voice_encoder = ConditioningEncoder(
+            config['mel_dim'],
+            config['model_dim'],
+            config['voice_encoder_depth']
+        )
+
+        voice_encoder.load_state_dict(saved_dict['model_state_dict'])
+
+        sampler = ConditioningEncoderSampler(voice_encoder)
+        sampler.model = sampler.model.eval().to(self.device)
+
+        return sampler.to(self.device)
 
     def load_mel(self):
         from play_inpainter.models.mel_spectrogram.mel import MelSpectrogram

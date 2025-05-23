@@ -61,6 +61,7 @@ class Inpainter():
         tokenizer_path: str = "s3://play-fal/v3-models/tokenizer-multi_bpe16384_merged_extended_58M.json",
         speech_tokenizer_path: str = "s3://play-fal/ldm-models/xlsr2_1b_v2_custom.pt",
         kmeans_layer_path: str = "s3://play-fal/ldm-models/kmeans_10k.npy",
+        voice_encoder_path: str = "s3://play-fal/ldm-models/voice_encoder_1992000.pt",
         inpainter_path: str = "s3://play-fal/ldm-models/last_250k_fixed.pkl",
     ) -> dict:
         from play_inpainter.utils.preset_util import get_all_checkpoints_from_preset
@@ -78,12 +79,8 @@ class Inpainter():
                 kmeans_layer_checkpoint = kmeans_layer_path,
                 sample_rate = 16000,
             ),
-            mel = dict(
-                sample_rate = 24000,
-            ),
-            ar = dict(
-                mel_dim = 100,
-                version = "v3",
+            voice_encoder = dict(
+                checkpoint = voice_encoder_path,
             ),
             inpainter = dict(
                 checkpoint = inpainter_path,
