@@ -79,12 +79,11 @@ class Inpainter():
                 sample_rate = 16000,
             ),
             mel = dict(
-                sample_rate = 16000,
+                sample_rate = 24000,
             ),
-            voice_encoder = dict(
-                spec_dim = 100,
-                embedding_dim = 1024,
-                attn_blocks = 6,
+            ar = dict(
+                mel_dim = 100,
+                version = "v3",
             ),
             inpainter = dict(
                 checkpoint = inpainter_path,
@@ -552,4 +551,4 @@ class Inpainter():
         self.timer("Vocoder")
 
         # encode audio for output
-        return (self.mm.vocoder.output_frequency, make_16bit_pcm(audio_g))
+        return (self.mm.vocoder.output_frequency, make_16bit_pcm(audio_g).squeeze())

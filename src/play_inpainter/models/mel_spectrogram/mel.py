@@ -1,7 +1,30 @@
+import os
+
 import torch
+import torchaudio
 
 from play_inpainter.models.mel_spectrogram.tacotron import TacotronSTFT
 
+# Default mel norm file for the model
+MEL_NORM_FILE_V2 = os.path.join(os.path.dirname(__file__), "mel_norms.pth")
+
+_PRESETS = {
+    "voice_conditioning_v2": {
+        # note that sampling_rate is unforunately named, but remains like that for historical reasons
+        # we infact do use this preset with audio with different sample rates and keep this value as is
+        # the correct mel sample rate value would be the one in base_model.mel_sample_rate
+        "sampling_rate": 22050,
+        "mel_norm_file": MEL_NORM_FILE_V2,
+        "mel_implementation": "torch",
+    },
+    "voice_conditioning_v3": {
+        "sampling_rate": 24000,
+        "do_diff_normalization": True,
+        "n_mel_channels": 100,
+        "mel_fmax": 12000.0,
+        "mel_implementation": "tacotron",
+    },
+}
 
 # Stats from the VqVAE training set - kept so both models use the same MEL format
 TACOTRON_MEL_MAX = 2.3143386840820312
@@ -28,7 +51,7 @@ def denormalize_mel(norm_mel, max_ = None, min_ = None):
 
 class MelSpectrogram(torch.nn.Module):
     @classmethod
-    def load_preset(cls, **kwargs):
+    def load_preset(cls, preset: str, **kwargs):
         """Load a preset for the MelSpectrogram.
 
         Args:
@@ -37,12 +60,9 @@ class MelSpectrogram(torch.nn.Module):
         Returns:
             Instance of the MelSpectrogram configured with the preset.
         """
-        p = {
-            "sampling_rate": 24000,
-            "do_diff_normalization": True,
-            "n_mel_channels": 100,
-            "mel_fmax": 12000.0,
-        }
+        if preset not in _PRESETS:
+            raise ValueError(f"preset {preset} not found")
+        p = _PRESETS[preset].copy()
         p.update(kwargs)
         return cls(**p)
 
@@ -58,16 +78,33 @@ class MelSpectrogram(torch.nn.Module):
         normalize=False,
         mel_norm_file=None,
         do_diff_normalization=False,
+        mel_implementation="torch",
     ):
         super().__init__()
+        assert mel_implementation in set(['torch', 'tacotron'])
+        self.mel_implementation = mel_implementation
 
-        self.mel_stft = TacotronSTFT(filter_length,
-            hop_length,
-            win_length,
-            n_mel_channels,
-            sampling_rate,
-            mel_fmin,
-            mel_fmax)
+        if self.mel_implementation == 'torch':
+            self.mel_stft = torchaudio.transforms.MelSpectrogram(
+                n_fft=filter_length,
+                hop_length=hop_length,
+                win_length=win_length,
+                power=2,
+                normalized=normalize,
+                sample_rate=sampling_rate,
+                f_min=mel_fmin,
+                f_max=mel_fmax,
+                n_mels=n_mel_channels,
+                norm="slaney",
+            )
+        else:
+            self.mel_stft = TacotronSTFT(filter_length,
+                hop_length,
+                win_length,
+                n_mel_channels,
+                sampling_rate,
+                mel_fmin,
+                mel_fmax)
         self.do_diff_normalization = do_diff_normalization
         if mel_norm_file is not None:
             self.mel_norms = torch.load(mel_norm_file)
@@ -102,6 +139,10 @@ class MelSpectrogram(torch.nn.Module):
             assert audio.ndim == 2 and audio.shape[0] == 1, f"expected mono audio, got {audio.shape}"
 
         mel = self.mel_stft(audio)
+
+        # Perform dynamic range compression
+        if self.mel_implementation == 'torch':
+            mel = torch.log(torch.clamp(mel, min=1e-5))
 
         if self.mel_norms is not None:
             mel = mel / self.mel_norms

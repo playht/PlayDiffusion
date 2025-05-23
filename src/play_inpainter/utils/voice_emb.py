@@ -10,36 +10,27 @@ from play_inpainter.models.model_manager import InpainterModelManager
 def get_voice_embeddings(
     mm: InpainterModelManager,
     voice_resource: VoiceResource,
-    normalize_audio: bool = True,
-    clip_duration: float = 30.0,
 ):
     cuda_stream = torch.cuda.Stream()
     with torch.cuda.stream(cuda_stream):
-        voice_audio_ar = voice_resource.get_audio(sample_rate=mm.mel_sample_rate)
+        voice_audio_ar = voice_resource.get_audio(sample_rate=mm.ar.mel_sample_rate)
         cuda_stream.wait_stream(torch.cuda.current_stream())
-        voice_emb_ng = get_voice_embedding(
-            voice_audio_ar,
-            normalize_audio=normalize_audio,
-            apply_gain=False,
-            clip_duration=clip_duration,
-            uncond_speech=mm.uncond_speech,
-            mel_sample_rate=mm.mel_sample_rate,
-            voice_encoder=mm.voice_encoder,
-            voice_encoder_gain=mm.voice_encoder_gain,
-            mel=mm.mel
-        )
+        voice_emb_ng, gain = mm.ar.get_voice_embedding_and_gain(voice_audio_ar)
 
-        voice_emb = apply_voice_embedding_gain(voice_emb_ng, mm.voice_encoder_gain)
+        voice_emb = apply_voice_embedding_gain(voice_emb_ng, gain)
 
         if voice_emb.isnan().any():
             raise ValueError("NaN in voice_emb")
 
         vt = mm.vocoder.cond_emb_type
         if vt == 'ar_emb_with_gain':
+            print("ar_emb_with_gain")
             result = (voice_emb, voice_emb.to(mm.vocoder.dtype))
         elif vt == 'ar_emb_no_gain':
+            print("ar_emb_no_gain")
             result = (voice_emb, voice_emb_ng.to(mm.vocoder.dtype))
         elif vt == 'wav@24khz':
+            print("wav@24khz")
             voice_audio_vc = voice_resource.get_audio(sample_rate=24000)
             vocoder_emb = mm.vocoder.get_cond_emb(voice_audio_vc, None, None)
             result = (voice_emb, vocoder_emb)
@@ -51,7 +42,8 @@ def get_voice_embeddings(
     return result
 
 def apply_voice_embedding_gain(emb: torch.Tensor, voice_encoder_gain):
-    return emb * voice_encoder_gain
+    with torch.no_grad():
+        return emb * voice_encoder_gain
 
 
 @torch.no_grad()

@@ -5,11 +5,11 @@ class InpainterModelManager:
         from play_inpainter.models.vocoder.ldm_bigvgan import BigVGAN
 
         self.preset = preset
+        self.ar_kwargs = preset["ar"]
         self.vocoder_kwargs = preset["vocoder"]
         self.tokenizer_kwargs = preset["tokenizer"]
         self.speech_tokenizer_kwargs = preset["speech_tokenizer"]
         self.mel_kwargs = preset["mel"]
-        self.voice_encoder_kwargs = preset["voice_encoder"]
         self.inpainter_kwargs = preset["inpainter"]
         self.device = device
 
@@ -22,11 +22,8 @@ class InpainterModelManager:
         )
 
         self.mel_sample_rate = self.mel_kwargs["sample_rate"]
-        self.mel = self.load_mel()
 
-        self.voice_encoder = self.load_voice_encoder(self.voice_encoder_kwargs)
-        self.voice_encoder_gain = nn.Parameter(torch.full((1, 1, self.voice_encoder_kwargs["embedding_dim"]), fill_value=0.02))
-        self.uncond_speech = nn.Parameter(torch.randn(1, 1, self.voice_encoder_kwargs["embedding_dim"]))
+        self.ar = self.load_ar(self.ar_kwargs)
 
         self.vocoder: BigVGAN = self.load_vocoder(self.vocoder_kwargs)
 
@@ -62,15 +59,19 @@ class InpainterModelManager:
 
         return tokenizer, speech_tokenizer
 
+    def load_ar(self, config: dict):
+        from play_inpainter.models.ar.parrot_base_model import BaseModel
+        from play_inpainter.models.ar.parrot_base_sampler import BaseSampler
+
+        model = BaseModel(**config)
+        sampler = BaseSampler(model)
+
+        return sampler
+
     def load_mel(self):
         from play_inpainter.models.mel_spectrogram.mel import MelSpectrogram
 
         return MelSpectrogram.load_preset()
-
-    def load_voice_encoder(self, config: dict):
-        from play_inpainter.models.voice_encoder.voice_encoder import ConditioningEncoder
-
-        return ConditioningEncoder(**config)
 
     def load_inpainter(self, config: dict):
         from play_inpainter.models.inpainter.masklm_text import load_maskgct_inpainter
