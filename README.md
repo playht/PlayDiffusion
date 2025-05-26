@@ -41,4 +41,4 @@ By using a **non-autoregressive diffusion model**, we can better maintain contex
 
 The full process is outlined in Figure 1.
 
-![Figure 1](./assets/DiscreteDiffusion.png)
+![Image](https://github.com/user-attachments/assets/16f783cd-c9c5-4c60-aabc-c57dc4b1f894)
