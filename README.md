@@ -16,10 +16,8 @@ Requires OPENAI_API_KEY env var
 Autoregressive transformer models have proven highly effective for synthesizing speech from text. However, they face a significant limitation: **modifying portions of the generated audio —known as inpainting— or removing them without leaving discontinuity artifacts is beyond their standard capabilities**. Thus different approaches are needed for more general speech editing tools. Consider the sentence:
 
 > *“The answer is out there, Neo. Go grab it!”*
-> 
 
-Now suppose you want to change “Neo” to “Trinity” *after* generation. With traditional AR models, your options are limited:
-
+Now suppose you want to change 🔴 "Neo" to 🟢 "Trinity" *after* generation. With traditional AR models, your options are limited.
 - **Regenerate the entire sentence**, which is computationally expensive and often leads to variations in prosody or speech rhythm.
 - **Replace just the word “Neo”**, which results in noticeable artifacts or mismatches at word boundaries.
 - **Regenerate from a midway point**, e.g., from “Trinity. Go grab it!”, but this has the potential of changing the prosody of the unedited part ("Go grab it"), creating unwanted variations in the speech rhythm.
@@ -42,3 +40,43 @@ By using a **non-autoregressive diffusion model**, we can better maintain contex
 The full process is outlined in Figure 1.
 
 ![Image](https://github.com/user-attachments/assets/16f783cd-c9c5-4c60-aabc-c57dc4b1f894)
+> **Figure 1.** PlayAI Discrete Diffusion Model. 1) The input audio containing the speech “The answer is out there Neo. Go grab it!” is encoded to discrete audio tokens. 2) The tokens that corresponds to the speech targeted for editing is masked. Here we mask the tokens for “Neo”. 3) Given the updated text and the full input token sequence (i.e., masked and unmasked) the Discrete Diffusion generates the edited output sequence. 4) The sequence is transformed to a waveform by our BigVGAN, conditioned on the speaker embedding extracted from the original clip.
+
+## Training
+
+We started with a pre-trained decoder-only text-transformer architecture and introduced crucial modifications tailored specifically for audio generation:
+
+1. **Non-Causal Masking:**
+Unlike standard decoder-only LLMs, like GPT, which employ causal masking (allowing tokens only to attend to previous ones), our modified Llama implementation uses non-causal attention heads. This allows the model to simultaneously leverage past, present, and future tokens.
+2. **Custom Tokenizer and Embedding Reduction:**
+To optimize efficiency, particularly for English speech synthesis, we used a custom Byte Pair Encoding (BPE) tokenizer consisting of only 10,000 text tokens. This drastically decreases the size of the embedding table, significantly boosting computational speed without compromising audio quality.
+3. **Speaker Conditioning:**
+Our model incorporates speaker conditioning derived from a pre-trained embedding model $e(w):\R^t \to \R^k$, which maps waveforms of varying length $t$ to fixed-size vectors of dimension $k$. This captures essential speaker characteristics, ensuring consistent voice identity across synthesized or edited audio segments.
+
+During **training**, like MaskGCT [[1]](https://arxiv.org/pdf/2409.00750), we randomly mask a percentage of audio tokens. The model learns to accurately predict these masked tokens based on context provided by the speaker embeddings, textual input, and remaining unmasked audio tokens. This method effectively trains the model to handle partial or complete audio masking scenarios. Given text samples at different time-steps as $x_t$ and text condition $\mathbf{C}$, we model the loss as:
+
+$$
+\mathcal{L}_{\text{mask}} = - \sum _{\mathcal{X} \in \mathcal{D}, t \in \[0,T]} \sum _{i=1}^{N} m _{t,i} \cdot \log p{\theta}(x_i | \mathbf{X}_t, \mathbf{C}).
+$$
+
+where the mask $m_{t,i}$ is defined as:
+
+$$
+m_{t,i} = \begin{cases}
+1, & \text{if token } i \text{ is masked} \\
+0, & \text{otherwise}
+\end{cases}
+$$
+
+During **inference**, decoding occurs iteratively, starting with a **fully masked token** sequence. The decoding process is conducted over multiple steps, designated as T:
+
+- **Step-wise Decoding Process:**
+    1. **Preliminary Prediction:** At each iteration, the model generates an initial prediction, X̂₀,  conditioned on the current masked audio and textual input.
+    2. **Confidence Scoring:** Tokens receive a confidence score based on the model’s prediction. Newly predicted (previously masked) tokens are assigned a confidence equivalent to their predicted probabilities, while tokens previously determined remain unaltered with a confidence score of 1.
+    3. **Adaptive Remasking:** Utilizing a progressively decreasing schedule, $\gamma$, we select a specific number of lowest-confidence tokens for remasking in subsequent iterations. The number of tokens to remask reduces progressively with each iteration, focusing the model’s refinement efforts on areas of highest uncertainty. See MaskGCT [[1]](https://arxiv.org/pdf/2409.00750) for further details.
+
+This iterative decoding process continues until all steps are complete, gradually refining token predictions and resulting in coherent, high-quality audio outputs.
+
+## **Reference:**
+
+[1] Yuancheng Wang, Haoyue Zhan, Liwei Liu, Ruihong Zeng, Haotian Guo, Jiachen Zheng, Qiang Zhang, Xueyao Zhang, Shunsi Zhang, and Zhizheng Wu. 2025. Maskgct: Zero-shot text-to-speech with masked generative codec transformer. In ICLR. [Arxiv link](https://arxiv.org/pdf/2409.00750).
