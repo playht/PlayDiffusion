@@ -14,7 +14,7 @@ dependencies = [
     "numpy==1.26.4",
     "fairseq2==0.4.4",
     "nltk==3.8.1",
-    "g2p-en==2.1.0",
+    "syllables==1.0.9",
     "jiwer==3.1.0",
     "pydantic==2.11.5",
     "soundfile==0.13.1",
