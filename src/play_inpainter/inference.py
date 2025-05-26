@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from play_inpainter.models.model_manager import InpainterModelManager
 from play_inpainter.pydantic_models.models import InpainterInput
@@ -52,6 +52,12 @@ class Inpainter():
         # avg en speaker speaks 4 syllables/sec
         self.default_audio_token_syllable_ratio = self.frame_rate / 4
         self.max_audio_frames = 750
+        # if no silence, how many extra words to inpaint on each side of actual change
+        self.dynamic_word_buffer = 1
+        # how many extra words to show the model on each side of the inpainted region
+        self.static_word_buffer = 5
+        # try to preserve silences longer than this (don't extend dynamic word buffer)
+        self.break_spacing_time = 0.5
 
         self.timer = Timer()
 
@@ -91,44 +97,12 @@ class Inpainter():
 
         return preset
 
-    def inpaint(self, input: InpainterInput):
+    def handle_word_times(self, input_word_times, input_text):
         import jiwer
-        import numpy as np
-        import syllables
-        import torch
-        import torchaudio.functional as F
 
-        self.timer.reset()
-
-        print(f"Inpainter input text: {input.input_text}")
-        print(f"Inpainter output text: {input.output_text}")
-        print("Inpainter input word times:")
-        for i, word in enumerate(input.input_word_times):
-            print(f"    {i}: {word}")
-
-        # use the input audio itself for the vocoder embedding
-        vocoder_emb = get_vocoder_embedding(input.audio, self.mm).to(self.device)
-        self.timer("Get vocoder embedding")
-
-        # extract xlsr audio tokens
-        input_wav, sr = load_audio(input.audio, self.device)
-        self.timer("Load audio")
-        resampled_wav = F.resample(
-            input_wav, orig_freq=sr, new_freq=self.mm.speech_tokenizer_sample_rate
-        )
-        print(f"Resampled wav: {resampled_wav.shape}")
-        self.timer("Resample")
-        with torch.inference_mode():
-            input_audio_tokens = self.mm.speech_tokenizer.waveform_to_units(
-                resampled_wav.squeeze()
-            )
-        print(f"Input audio tokens: {input_audio_tokens.shape}")
-        self.timer("Speech tokenizer")
-
-        # validate word times
-        if not isinstance(input.input_word_times, list):
+        if not isinstance(input_word_times, list):
             raise ValueError("input_word_times must be a list")
-        for word in input.input_word_times:
+        for word in input_word_times:
             if not isinstance(word, dict):
                 raise ValueError("input_word_times must be a list of dictionaries")
             if word.get("word") is None or not isinstance(word["word"], str):
@@ -141,43 +115,14 @@ class Inpainter():
                 "start": word.get("start"),
                 "end": word.get("end"),
             }
-            for word in input.input_word_times
+            for word in input_word_times
         ]
 
-        # determine audio-token-to-syllable ratio (excluding long silences)
-        speech_time = 0.0
-        break_spacing_time = 0.5
-        last_word_end = -break_spacing_time
-        words_with_times = []
-        for i, word in enumerate(word_times):
-            if (
-                word["word"] == "<|unknown|>"
-                or word["start"] is None
-                or word["end"] is None
-            ):
-                continue
-            words_with_times.append(word["word"])
-            if word["start"] - last_word_end < break_spacing_time:
-                speech_time += word["end"] - last_word_end
-            else:
-                speech_time += word["end"] - word["start"] + break_spacing_time
-            last_word_end = word["end"]
-        print(f"Speech time: {speech_time}")
-        n_syllables = syllables.estimate(" ".join(words_with_times))
-        print(f"Number of syllables: {n_syllables}")
-        if n_syllables == 0:
-            audio_token_syllable_ratio = self.default_audio_token_syllable_ratio
-        else:
-            audio_token_syllable_ratio = speech_time * self.frame_rate / n_syllables
-        print(f"Audio token to syllable ratio: {audio_token_syllable_ratio}")
-        self.timer("Audio token to syllable ratio")
-
-        # if any word times are missing, add them to the word_times list
+        # if the aligner missed words, add them to the word_times list
         timed_words = [entry["word"].lower() for entry in word_times]
         word_times_align = jiwer.process_words(
-            input.input_text.lower(), " ".join(timed_words)
+            input_text.lower(), " ".join(timed_words)
         )
-        text_align = jiwer.process_words(input.input_text, input.output_text)
         last_hyp_index = 0
         word_times_mod = []
         for chunk in word_times_align.alignments[0]:
@@ -196,14 +141,42 @@ class Inpainter():
         for i, word in enumerate(word_times_mod):
             print(f"    {i}: {word}")
 
-        # merge adjacent diff chunks and calculate static buffer to pass to inpainter
+        return word_times_mod
+
+    def calculate_audio_token_syllable_ratio(self, word_times: List[Dict]):
+        import syllables
+
+        speech_time = 0.0
+        last_word_end = -self.break_spacing_time
+        words_with_times = []
+        for i, word in enumerate(word_times):
+            if (
+                word["word"] == "<|unknown|>"
+                or word["start"] is None
+                or word["end"] is None
+            ):
+                continue
+            words_with_times.append(word["word"])
+            if word["start"] - last_word_end < self.break_spacing_time:
+                speech_time += word["end"] - last_word_end
+            else:
+                speech_time += word["end"] - word["start"] + self.break_spacing_time
+            last_word_end = word["end"]
+        print(f"Speech time: {speech_time}")
+        n_syllables = syllables.estimate(" ".join(words_with_times))
+        print(f"Number of syllables: {n_syllables}")
+        if n_syllables == 0:
+            audio_token_syllable_ratio = self.default_audio_token_syllable_ratio
+        else:
+            audio_token_syllable_ratio = speech_time * self.frame_rate / n_syllables
+        print(f"Audio token to syllable ratio: {audio_token_syllable_ratio}")
+        return audio_token_syllable_ratio
+
+    def calculate_diff_words(self, text_align, word_times: List[Dict], input_audio_tokens):
         merged_chunks = []  # type: ignore
-        # if no silence, how many extra words to inpaint on each side of actual change
-        dynamic_word_buffer = 1
-        # how many extra words to show the model on each side of the inpainted region
-        static_word_buffer = 5
         last_chunk_end = None
         for chunk in text_align.alignments[0]:
+            print(chunk)
             if chunk.type != "equal":
                 ref_start = chunk.ref_start_idx
                 hyp_start = chunk.hyp_start_idx
@@ -214,37 +187,37 @@ class Inpainter():
 
                 # add dynamic word buffer to the start/end of the ref/hyp
                 # unless there is a long silence at some point
-                for i in range(0, dynamic_word_buffer):
+                for i in range(0, self.dynamic_word_buffer):
                     # break if we're at the start or if we hit a long silence
                     if ref_start - i <= 0:
                         break
                     # for an insertion at the very end, use the end time of the audio
-                    if ref_start - i == len(word_times_mod):
+                    if ref_start - i == len(word_times):
                         current_word_start = (
                             input_audio_tokens.shape[-1] * self.frame_rate
                         )
                     else:
-                        current_word_start = word_times_mod[ref_start - i].get("start")
-                    prev_word_end = word_times_mod[ref_start - i - 1].get("end")
+                        current_word_start = word_times[ref_start - i].get("start")
+                    prev_word_end = word_times[ref_start - i - 1].get("end")
                     if (
                         current_word_start is not None
                         and prev_word_end is not None
-                        and current_word_start - prev_word_end > break_spacing_time
+                        and current_word_start - prev_word_end > self.break_spacing_time
                     ):
                         break
                     ref_start -= 1
                     if hyp_start > 0:
                         hyp_start -= 1
-                for i in range(0, dynamic_word_buffer):
+                for i in range(0, self.dynamic_word_buffer):
                     # break if we're at the end or if we hit a long silence
-                    if ref_end + i >= len(word_times_mod):
+                    if ref_end + i >= len(word_times):
                         break
-                    current_word_end = word_times_mod[ref_end + i - 1].get("end")
-                    next_word_start = word_times_mod[ref_end + i].get("start")
+                    current_word_end = word_times[ref_end + i - 1].get("end")
+                    next_word_start = word_times[ref_end + i].get("start")
                     if (
                         current_word_end is not None
                         and next_word_start is not None
-                        and next_word_start - current_word_end > break_spacing_time
+                        and next_word_start - current_word_end > self.break_spacing_time
                         # if it's an insert, assume it goes on the "right" of a silence
                         # TODO use punctuation to be smarter about this
                         and not (chunk.type == "insert" and i == 0)
@@ -255,48 +228,48 @@ class Inpainter():
                         hyp_end += 1
 
                 # if start/end word is missing a time, step back/forward til we find one
-                while ref_start > 0 and word_times_mod[ref_start].get("start") is None:
+                while ref_start > 0 and word_times[ref_start].get("start") is None:
                     ref_start -= 1
                     if hyp_start > 0:
                         hyp_start -= 1
                 while (
-                    ref_end < len(word_times_mod)
-                    and word_times_mod[ref_end - 1].get("end") is None
+                    ref_end < len(word_times)
+                    and word_times[ref_end - 1].get("end") is None
                 ):
                     ref_end += 1
                     if hyp_end < len(text_align.hypotheses[0]):
                         hyp_end += 1
 
                 # add static word buffer to the start/end of the ref/hyp
-                if ref_start - static_word_buffer < 0:
+                if ref_start - self.static_word_buffer < 0:
                     ref_buf_start = 0
                 else:
-                    ref_buf_start = ref_start - static_word_buffer
-                if hyp_start - static_word_buffer < 0:
+                    ref_buf_start = ref_start - self.static_word_buffer
+                if hyp_start - self.static_word_buffer < 0:
                     hyp_buf_start = 0
                 else:
-                    hyp_buf_start = hyp_start - static_word_buffer
-                if ref_end + static_word_buffer > len(word_times_mod):
-                    ref_buf_end = len(word_times_mod)
+                    hyp_buf_start = hyp_start - self.static_word_buffer
+                if ref_end + self.static_word_buffer > len(word_times):
+                    ref_buf_end = len(word_times)
                 else:
-                    ref_buf_end = ref_end + static_word_buffer
-                if hyp_end + static_word_buffer > len(text_align.hypotheses[0]):
+                    ref_buf_end = ref_end + self.static_word_buffer
+                if hyp_end + self.static_word_buffer > len(text_align.hypotheses[0]):
                     hyp_buf_end = len(text_align.hypotheses[0])
                 else:
-                    hyp_buf_end = hyp_end + static_word_buffer
+                    hyp_buf_end = hyp_end + self.static_word_buffer
 
                 # if start/end buf word is missing a time,
                 # step back/forward til we find one
                 while (
                     ref_buf_start > 0
-                    and word_times_mod[ref_buf_start].get("start") is None
+                    and word_times[ref_buf_start].get("start") is None
                 ):
                     ref_buf_start -= 1
                     if hyp_buf_start > 0:
                         hyp_buf_start -= 1
                 while (
-                    ref_buf_end < len(word_times_mod)
-                    and word_times_mod[ref_buf_end - 1].get("end") is None
+                    ref_buf_end < len(word_times)
+                    and word_times[ref_buf_end - 1].get("end") is None
                 ):
                     ref_buf_end += 1
                     if hyp_buf_end < len(text_align.hypotheses[0]):
@@ -358,9 +331,20 @@ class Inpainter():
                     )
                     merged_chunks.append(diff_chunk)
                 last_chunk_end = ref_end
-        self.timer("Prepare word times and diff chunks")
 
-        # iterate over the diffs, calculating inputs for the inpainter
+        return merged_chunks
+
+    def calculate_diff_frames(
+            self,
+            merged_chunks: List[TextDiffChunk],
+            text_align,
+            word_times: List[Dict],
+            input_audio_tokens,
+            audio_token_syllable_ratio: float,
+    ):
+        import numpy as np
+        import syllables
+
         diffs = []
         for chunk in merged_chunks:
             ref_start = chunk.ref_start
@@ -379,49 +363,49 @@ class Inpainter():
             if ref_start == 0:
                 # if we don't have a timestamp for the first word, we are forced to
                 # assume it's at the start of the file
-                if word_times_mod[0].get("start") is None:
+                if word_times[0].get("start") is None:
                     start_frame = 0
                     start_silence_frames = 0
                 else:
                     start_frame = max(
-                        0, int(word_times_mod[0]["start"] * self.frame_rate)
+                        0, int(word_times[0]["start"] * self.frame_rate)
                     )
                     start_silence_frames = min(
-                        start_frame, int(break_spacing_time * self.frame_rate)
+                        start_frame, int(self.break_spacing_time * self.frame_rate)
                     )
             else:
-                start_frame = int(word_times_mod[ref_start]["start"] * self.frame_rate)
+                start_frame = int(word_times[ref_start]["start"] * self.frame_rate)
                 # if preceded by silence, inpaint up to half in case timestamp is off
                 if (
-                    word_times_mod[ref_start - 1].get("end") is not None
-                    and word_times_mod[ref_start]["start"]
-                    - word_times_mod[ref_start - 1].get("end")
-                    > break_spacing_time
+                    word_times[ref_start - 1].get("end") is not None
+                    and word_times[ref_start]["start"]
+                    - word_times[ref_start - 1]["end"]
+                    > self.break_spacing_time
                 ):
                     silence_seconds = (
-                        word_times_mod[ref_start]["start"]
-                        - word_times_mod[ref_start - 1]["end"]
+                        word_times[ref_start]["start"]
+                        - word_times[ref_start - 1]["end"]
                     ) / 2
                     start_silence_frames = min(
                         int(silence_seconds * self.frame_rate),
-                        int(break_spacing_time * self.frame_rate),
+                        int(self.break_spacing_time * self.frame_rate),
                     )
                 else:
                     start_silence_frames = 0
-            if ref_end == len(word_times_mod):
+            if ref_end == len(word_times):
                 # if we don't have a timestamp for the last word, we are forced to
                 # assume it's at the end of the file
-                if word_times_mod[-1].get("end") is None:
+                if word_times[-1].get("end") is None:
                     end_frame = input_audio_tokens.shape[-1]
                     end_silence_frames = 0
                 else:
                     end_frame = min(
                         input_audio_tokens.shape[-1],
-                        int(word_times_mod[-1]["end"] * self.frame_rate),
+                        int(word_times[-1]["end"] * self.frame_rate),
                     )
                     end_silence_frames = min(
                         input_audio_tokens.shape[-1] - end_frame,
-                        int(break_spacing_time * self.frame_rate),
+                        int(self.break_spacing_time * self.frame_rate),
                     )
             else:
                 # pure insertion
@@ -429,22 +413,22 @@ class Inpainter():
                     end_frame = start_frame
                 else:
                     end_frame = int(
-                        word_times_mod[ref_end - 1]["end"] * self.frame_rate
+                        word_times[ref_end - 1]["end"] * self.frame_rate
                     )
                 # if followed by a silence, mask half of it in case the timestamp is off
                 if (
-                    word_times_mod[ref_end].get("start") is not None
-                    and word_times_mod[ref_end].get("start")
-                    - word_times_mod[ref_end - 1]["end"]
-                    > break_spacing_time
+                    word_times[ref_end].get("start") is not None
+                    and word_times[ref_end]["start"]
+                    - word_times[ref_end - 1]["end"]
+                    > self.break_spacing_time
                 ):
                     silence_seconds = (
-                        word_times_mod[ref_end]["start"]
-                        - word_times_mod[ref_end - 1]["end"]
+                        word_times[ref_end]["start"]
+                        - word_times[ref_end - 1]["end"]
                     ) / 2
                     end_silence_frames = min(
                         int(silence_seconds * self.frame_rate),
-                        int(break_spacing_time * self.frame_rate),
+                        int(self.break_spacing_time * self.frame_rate),
                     )
                 else:
                     end_silence_frames = 0
@@ -452,13 +436,13 @@ class Inpainter():
                 buf_start_frame = 0
             else:
                 buf_start_frame = int(
-                    word_times_mod[ref_buf_start]["start"] * self.frame_rate
+                    word_times[ref_buf_start]["start"] * self.frame_rate
                 )
-            if ref_buf_end == len(word_times_mod):
+            if ref_buf_end == len(word_times):
                 buf_end_frame = input_audio_tokens.shape[-1]
             else:
                 buf_end_frame = int(
-                    word_times_mod[ref_buf_end - 1]["end"] * self.frame_rate
+                    word_times[ref_buf_end - 1]["end"] * self.frame_rate
                 )
 
             # only inpaint silence if the actual diff is at the start/end of the
@@ -507,13 +491,13 @@ class Inpainter():
                 sub_words = np.array_split(text_to_submit, n_subdiffs)
                 for i in range(n_subdiffs):
                     if i == 0:
-                        hyp_text = " ".join(sub_words[i][static_word_buffer:])
+                        hyp_text = " ".join(sub_words[i][self.static_word_buffer:])
                         sub_start_frame = start_frame
                         sub_end_frame = None
                         sub_buf_start_frame = buf_start_frame
                         sub_buf_end_frame = None
                     elif i == n_subdiffs - 1:
-                        hyp_text = " ".join(sub_words[i][:-static_word_buffer])
+                        hyp_text = " ".join(sub_words[i][:-self.static_word_buffer])
                         sub_start_frame = None
                         sub_end_frame = end_frame
                         sub_buf_start_frame = None
@@ -555,9 +539,11 @@ class Inpainter():
                     )
                 )
         print(f"{len(diffs)} diffs to inpaint")
-        self.timer("Calculate diffs to inpaint")
+        return diffs
 
-        # generate inpainted audio
+    def do_inpaint(self, diffs: List[InpainterChunk], input_audio_tokens, input):
+        import torch
+
         with torch.no_grad():
             output_chunks = []
             last_end_frame = -1
@@ -652,13 +638,64 @@ class Inpainter():
                     f"Trimmed inpainted audio token shape: {inpaint_audio_tokens.shape}"
                 )
                 output_chunks.append(inpaint_audio_tokens)
-        self.timer("Inpainter")
 
         # save the remaining unchanged audio tokens and concatenate all chunks
         if input_audio_tokens.shape[-1] > last_end_frame + 1:
             output_chunks.append(input_audio_tokens[:, last_end_frame + 1 :])
             print(f"Unchanged audio tokens shape: {output_chunks[-1].shape}")
-        output_audio_tokens = torch.cat(output_chunks, dim=1)
+        return torch.cat(output_chunks, dim=1)
+
+
+    def inpaint(self, input: InpainterInput):
+        import jiwer
+        import torch
+        import torchaudio.functional as F
+
+        self.timer.reset()
+
+        print(f"Inpainter input text: {input.input_text}")
+        print(f"Inpainter output text: {input.output_text}")
+        text_align = jiwer.process_words(input.input_text, input.output_text)
+        self.timer("Align text")
+
+        # use the input audio itself for the vocoder embedding
+        vocoder_emb = get_vocoder_embedding(input.audio, self.mm).to(self.device)
+        self.timer("Get vocoder embedding")
+
+        # extract xlsr audio tokens
+        input_wav, sr = load_audio(input.audio, self.device)
+        self.timer("Load audio")
+        resampled_wav = F.resample(
+            input_wav, orig_freq=sr, new_freq=self.mm.speech_tokenizer_sample_rate
+        )
+        print(f"Resampled wav: {resampled_wav.shape}")
+        self.timer("Resample")
+        with torch.inference_mode():
+            input_audio_tokens = self.mm.speech_tokenizer.waveform_to_units(
+                resampled_wav.squeeze()
+            )
+        print(f"Input audio tokens: {input_audio_tokens.shape}")
+        self.timer("Speech tokenizer")
+
+        # calculate alignment to determine word times
+        word_times = self.handle_word_times(input.input_word_times, input.input_text)
+        self.timer("Handle word times")
+
+        # determine audio-token-to-syllable ratio (excluding long silences)
+        audio_token_syllable_ratio = self.calculate_audio_token_syllable_ratio(word_times)
+        self.timer("Audio token to syllable ratio")
+
+        # merge adjacent diff chunks and calculate static buffer to pass to inpainter
+        merged_chunks = self.calculate_diff_words(text_align, word_times, input_audio_tokens)
+        self.timer("Prepare word times and diff chunks")
+
+        # iterate over the diffs, calculating inputs for the inpainter
+        diffs = self.calculate_diff_frames(merged_chunks, text_align, word_times, input_audio_tokens, audio_token_syllable_ratio)
+        self.timer("Calculate diffs to inpaint")
+
+        # generate inpainted audio
+        output_audio_tokens = self.do_inpaint(diffs, input_audio_tokens, vocoder_emb, input)
+        self.timer("Inpainter")
 
         # vocode the output audio
         with torch.no_grad():
