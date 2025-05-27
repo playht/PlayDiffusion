@@ -47,7 +47,7 @@ The full process is outlined in Figure 1.
 We started with a pre-trained decoder-only text-transformer architecture and introduced crucial modifications tailored specifically for audio generation:
 
 1. **Non-Causal Masking:**
-Unlike standard decoder-only LLMs, like GPT, which employ causal masking (allowing tokens only to attend to previous ones), our modified Llama implementation uses non-causal attention heads. This allows the model to simultaneously leverage past, present, and future tokens.
+Unlike standard decoder-only LLMs, like GPT, which employ causal attention (allowing tokens only to attend to previous ones), our modified Llama implementation uses non-causal attention heads. This allows the model to simultaneously leverage past, present, and future tokens.
 2. **Custom Tokenizer and Embedding Reduction:**
 To optimize efficiency, particularly for English speech synthesis, we used a custom Byte Pair Encoding (BPE) tokenizer consisting of only 10,000 text tokens. This drastically decreases the size of the embedding table, significantly boosting computational speed without compromising audio quality.
 3. **Speaker Conditioning:**
