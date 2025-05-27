@@ -22,7 +22,7 @@ Now suppose you want to change 🔴 "Neo" to 🟢 "Trinity" *after* generation. 
 - **Replace just the word “Neo”**, which results in noticeable artifacts or mismatches at word boundaries.
 - **Regenerate from a midway point**, e.g., from “Trinity. Go grab it!”, but this has the potential of changing the prosody of the unedited part ("Go grab it"), creating unwanted variations in the speech rhythm.
 
-All of these approaches compromise both the coherence and naturalness of the audio.
+All of these approaches compromise both the coherence and naturalness of the audio. Instead, for these type of speech editing tools, non-autoregressive approaches are favorable [[1](https://arxiv.org/pdf/2401.04577), [2](https://arxiv.org/pdf/2305.09636)].
 
 
 ## PlayAI Discrete Diffusion
@@ -53,7 +53,7 @@ To optimize efficiency, particularly for English speech synthesis, we used a cus
 3. **Speaker Conditioning:**
 Our model incorporates speaker conditioning derived from a pre-trained embedding model $e(w):\R^t \to \R^k$, which maps waveforms of varying length $t$ to fixed-size vectors of dimension $k$. This captures essential speaker characteristics, ensuring consistent voice identity across synthesized or edited audio segments.
 
-During **training**, like MaskGCT [[1]](https://arxiv.org/pdf/2409.00750), we randomly mask a percentage of audio tokens. The model learns to accurately predict these masked tokens based on context provided by the speaker embeddings, textual input, and remaining unmasked audio tokens. This method effectively trains the model to handle partial or complete audio masking scenarios. Given text samples at different time-steps as $x_t$ and text condition $\mathbf{C}$, we model the loss as:
+During **training**, like MaskGCT [[3]](https://arxiv.org/pdf/2409.00750), we randomly mask a percentage of audio tokens. The model learns to accurately predict these masked tokens based on context provided by the speaker embeddings, textual input, and remaining unmasked audio tokens. This method effectively trains the model to handle partial or complete audio masking scenarios. Given text samples at different time-steps as $x_t$ and text condition $\mathbf{C}$, we model the loss as:
 
 $$
 \mathcal{L}_{\text{mask}} = - \sum _{\mathcal{X} \in \mathcal{D}, t \in \[0,T]} \sum _{i=1}^{N} m _{t,i} \cdot \log p{\theta}(x_i | \mathbf{X}_t, \mathbf{C}).
@@ -73,10 +73,14 @@ During **inference**, decoding occurs iteratively, starting with a **fully maske
 - **Step-wise Decoding Process:**
     1. **Preliminary Prediction:** At each iteration, the model generates an initial prediction, X̂₀,  conditioned on the current masked audio and textual input.
     2. **Confidence Scoring:** Tokens receive a confidence score based on the model’s prediction. Newly predicted (previously masked) tokens are assigned a confidence equivalent to their predicted probabilities, while tokens previously determined remain unaltered with a confidence score of 1.
-    3. **Adaptive Remasking:** Utilizing a progressively decreasing schedule, $\gamma$, we select a specific number of lowest-confidence tokens for remasking in subsequent iterations. The number of tokens to remask reduces progressively with each iteration, focusing the model’s refinement efforts on areas of highest uncertainty. See MaskGCT [[1]](https://arxiv.org/pdf/2409.00750) for further details.
+    3. **Adaptive Remasking:** Utilizing a progressively decreasing schedule, $\gamma$, we select a specific number of lowest-confidence tokens for remasking in subsequent iterations. The number of tokens to remask reduces progressively with each iteration, focusing the model’s refinement efforts on areas of highest uncertainty. See MaskGCT [[3]](https://arxiv.org/pdf/2409.00750) for further details.
 
 This iterative decoding process continues until all steps are complete, gradually refining token predictions and resulting in coherent, high-quality audio outputs.
 
 ## **Reference:**
 
-[1] Yuancheng Wang, Haoyue Zhan, Liwei Liu, Ruihong Zeng, Haotian Guo, Jiachen Zheng, Qiang Zhang, Xueyao Zhang, Shunsi Zhang, and Zhizheng Wu. 2025. Maskgct: Zero-shot text-to-speech with masked generative codec transformer. In ICLR. [Arxiv link](https://arxiv.org/pdf/2409.00750).
+[1] Alon Ziv, Itai Gat, Gael Le Lan, Tal Remez, Felix Kreuk, Alexandre Défossez, Jade Copet, Gabriel Synnaeve, and Yossi Adi. 2024. Masked audio generation using a single non-autoregressive transformer. arXiv preprint [arXiv:2401.04577](https://arxiv.org/pdf/2401.04577).
+
+[2] Zalán Borsos, Matt Sharifi, Damien Vincent, Eugene Kharitonov, Neil Zeghidour, and Marco Tagliasacchi. 2023. SoundStorm: Efficient parallel audio generation. arXiv preprint [arXiv:2305.09636](https://arxiv.org/pdf/2305.09636).
+
+[3] Yuancheng Wang, Haoyue Zhan, Liwei Liu, Ruihong Zeng, Haotian Guo, Jiachen Zheng, Qiang Zhang, Xueyao Zhang, Shunsi Zhang, and Zhizheng Wu. 2025. Maskgct: Zero-shot text-to-speech with masked generative codec transformer. In ICLR. [Arxiv link](https://arxiv.org/pdf/2409.00750).
