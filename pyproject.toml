@@ -1,0 +1,46 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[project]
+name = "playdiffusion"
+version = "0.1.0"
+description = "Diffusion model for speech inpainting and TTS"
+requires-python = ">=3.11"
+license = { text = "TODO" }
+dependencies = [
+    "torch==2.6.0",
+    "torchaudio==2.6.0",
+    "numpy==1.24.3",
+    "fairseq2==0.4.4",
+    "nltk==3.9.1",
+    "syllables @ git+https://github.com/playht/python-syllables.git",
+    "jiwer==3.1.0",
+    "pydantic==2.11.5",
+    "soundfile==0.13.1",
+    "boto3==1.38.22",
+    "tqdm==4.67.1",
+    "python-decouple==3.8",
+    "safetensors==0.5.3",
+    "tokenizers==0.21.1",
+    "librosa==0.10.1",
+    "scipy==1.11.4",
+    "scikit-learn==1.3.2",
+    "einops==0.8.1",
+    "torchtune==0.6.1",
+    "torchao==0.11.0",
+    "huggingface-hub==0.31.4",
+    "unidecode==1.4.0",
+]
+
+[project.optional-dependencies]
+demo = [
+    "gradio==5.31.0",
+    "openai==1.82.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/playdiffusion"]
