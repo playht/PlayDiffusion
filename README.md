@@ -1,5 +1,7 @@
 # PlayDiffusion
 
+https://github.com/user-attachments/assets/5b15f9d5-cb53-450f-84f6-5f7dda3e44e5
+
 ## Installation
 
 Requires OPENAI_API_KEY env var for ASR and word timings--you can also use some other source for these.
