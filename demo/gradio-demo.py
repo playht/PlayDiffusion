@@ -42,6 +42,7 @@ if __name__ == '__main__':
             gr.Markdown("### Upload an audio file and run ASR to get the text.")
             gr.Markdown("### Then, specify the desired output text.")
             gr.Markdown("### Run the inpainter to generate the modified audio.")
+            gr.Markdown("### Note: The model and demo are currently targeted for English.")
 
             with gr.Accordion("Advanced options", open=False):
                 num_steps_slider = gr.Slider(minimum=1, maximum=100, step=1, label="number of sampling steps codebook", value=30)
