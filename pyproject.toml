@@ -9,8 +9,8 @@ allow-direct-references = true
 name = "playdiffusion"
 version = "0.1.0"
 description = "Diffusion model for speech inpainting and TTS"
-requires-python = ">=3.11"
-license = { text = "TODO" }
+requires-python = "==3.11.*"
+license = { text = "Apache-2.0" }
 dependencies = [
     "torch==2.6.0",
     "torchaudio==2.6.0",
