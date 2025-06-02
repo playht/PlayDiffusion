@@ -9,6 +9,11 @@ Requires OPENAI_API_KEY env var for ASR and word timings--you can also use some 
 3. Install package and dependencies: `pip install '.[demo]'`
 4. Run demo: `python demo/gradio-demo.py`
 
+## Hugging Face Model and Space repository
+
+[Model Checkpoints](https://huggingface.co/PlayHT/PlayDiffusion)
+
+[Gradio](https://huggingface.co/spaces/PlayHT/PlayDiffusion)
 
 ## Introduction
 
