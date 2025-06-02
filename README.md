@@ -2,6 +2,8 @@
 
 https://github.com/user-attachments/assets/5b15f9d5-cb53-450f-84f6-5f7dda3e44e5
 
+[Blog Post](https://blog.play.ai/blog/play-diffusion)
+
 ## Installation
 
 Requires OPENAI_API_KEY env var for ASR and word timings--you can also use some other source for these.
@@ -11,11 +13,11 @@ Requires OPENAI_API_KEY env var for ASR and word timings--you can also use some 
 3. Install package and dependencies: `pip install '.[demo]'`
 4. Run demo: `python demo/gradio-demo.py`
 
-## Hugging Face Model and Space repository
-
-[Model Checkpoints](https://huggingface.co/PlayHT/PlayDiffusion)
+## Hugging Face Gradio and Checkpoints
 
 [Gradio](https://huggingface.co/spaces/PlayHT/PlayDiffusion)
+
+[Model Checkpoints](https://huggingface.co/PlayHT/PlayDiffusion)
 
 ## Introduction
 
