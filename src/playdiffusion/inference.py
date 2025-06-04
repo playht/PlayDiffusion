@@ -385,6 +385,10 @@ class PlayDiffusion():
                     start_silence_frames = min(
                         start_frame, int(self.break_spacing_time * self.frame_rate)
                     )
+            # pure insertion at the end
+            elif ref_start == len(word_times):
+                start_frame = input_audio_tokens.shape[-1]
+                start_silence_frames = 0
             else:
                 start_frame = int(word_times[ref_start]["start"] * self.frame_rate)
                 # if preceded by silence, inpaint up to half in case timestamp is off
@@ -404,7 +408,7 @@ class PlayDiffusion():
                     )
                 else:
                     start_silence_frames = 0
-            if ref_end == len(word_times):
+            if ref_end == len(word_times) and ref_end != ref_start:
                 # if we don't have a timestamp for the last word, we are forced to
                 # assume it's at the end of the file
                 if word_times[-1].get("end") is None:
@@ -429,7 +433,8 @@ class PlayDiffusion():
                     )
                 # if followed by a silence, mask half of it in case the timestamp is off
                 if (
-                    word_times[ref_end].get("start") is not None
+                    ref_end < len(word_times)
+                    and word_times[ref_end].get("start") is not None
                     and word_times[ref_end]["start"]
                     - word_times[ref_end - 1]["end"]
                     > self.break_spacing_time
