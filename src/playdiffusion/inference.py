@@ -240,7 +240,7 @@ class PlayDiffusion():
                         hyp_end += 1
 
                 # if start/end word is missing a time, step back/forward til we find one
-                while ref_start > 0 and word_times < len(word_times) and word_times[ref_start].get("start") is None:
+                while ref_start > 0 and ref_start < len(word_times) and word_times[ref_start].get("start") is None:
                     ref_start -= 1
                     if hyp_start > 0:
                         hyp_start -= 1
