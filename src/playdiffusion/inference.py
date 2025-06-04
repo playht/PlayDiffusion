@@ -146,10 +146,12 @@ class PlayDiffusion():
                 last_hyp_index = chunk.hyp_end_idx
         for i in range(last_hyp_index, len(word_times)):
             word_times_mod.append(word_times[i])
-        assert len(word_times_mod) == len(word_times_align.references[0])
+
         print("Word times (added missing words):")
         for i, word in enumerate(word_times_mod):
             print(f"    {i}: {word}")
+
+        assert len(word_times_mod) == len(word_times_align.references[0])
 
         return word_times_mod
 
@@ -664,6 +666,8 @@ class PlayDiffusion():
 
         self.timer.reset()
 
+        print(f"Input: {input}")
+
         # normalize the input text
         input_text = unidecode(input.input_text)
         output_text = unidecode(input.output_text)
@@ -758,13 +762,13 @@ class PlayDiffusion():
         return self.do_split(text)
 
     def tts(self, input: TTSInput):
-        import re
-
         import syllables
         import torch
         from unidecode import unidecode
 
         self.timer.reset()
+
+        print(f"Input: {input}")
 
         # normalize the input text
         output_text = unidecode(input.output_text)
