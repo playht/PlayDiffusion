@@ -109,6 +109,7 @@ class PlayDiffusion():
         import jiwer
 
         input_text = ''.join([c for c in input_text if c.isalnum() or c.isspace() or c == "'" or c == "-"])
+        print(f"Text for word times alignment: {input_text}")
 
         if not isinstance(input_word_times, list):
             raise ValueError("input_word_times must be a list")
