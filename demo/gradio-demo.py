@@ -9,17 +9,17 @@ from playdiffusion.utils.audio_utils import raw_audio_to_torch_audio
 from playdiffusion.utils.save_audio import make_16bit_pcm
 from playdiffusion.utils.voice_resource import VoiceResource
 
-# whisper_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+whisper_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 inpainter = PlayDiffusion()
 
 def run_asr(audio):
     audio_file = open(audio, "rb")
-    # transcript = whisper_client.audio.transcriptions.create(
-    #     file=audio_file,
-    #     model="whisper-1",
-    #     response_format="verbose_json",
-    #     timestamp_granularities=["word"]
-    # )
+    transcript = whisper_client.audio.transcriptions.create(
+        file=audio_file,
+        model="whisper-1",
+        response_format="verbose_json",
+        timestamp_granularities=["word"]
+    )
     word_times = [{
         "word": word.word,
         "start": word.start,
@@ -100,11 +100,11 @@ if __name__ == '__main__':
             rvc_voice =  gr.Audio(label="Voice to use for cloning",
                 sources=["upload", "microphone"], type="filepath",
             )
-            rvc_submit = gr.Button("Convert to Speech")
-            rvc_output = gr.Audio(label="Generated Speech")
+            rvc_submit = gr.Button("Real time Speech Cloning")
+            rvc_output = gr.Audio(label="Cloned Speech")
 
             rvc_submit.click(
-                run_inpainter_tts,
+                speech_rvc,
                 inputs=[rvc_speech, rvc_voice],
                 outputs=[rvc_output]
             )
