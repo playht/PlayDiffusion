@@ -4,22 +4,22 @@ import re
 import gradio as gr
 from openai import OpenAI
 
-from playdiffusion import PlayDiffusion, InpaintInput, TTSInput
+from playdiffusion import PlayDiffusion, InpaintInput, TTSInput, RVCInput
 from playdiffusion.utils.audio_utils import raw_audio_to_torch_audio
 from playdiffusion.utils.save_audio import make_16bit_pcm
 from playdiffusion.utils.voice_resource import VoiceResource
 
-whisper_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# whisper_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 inpainter = PlayDiffusion()
 
 def run_asr(audio):
     audio_file = open(audio, "rb")
-    transcript = whisper_client.audio.transcriptions.create(
-        file=audio_file,
-        model="whisper-1",
-        response_format="verbose_json",
-        timestamp_granularities=["word"]
-    )
+    # transcript = whisper_client.audio.transcriptions.create(
+    #     file=audio_file,
+    #     model="whisper-1",
+    #     response_format="verbose_json",
+    #     timestamp_granularities=["word"]
+    # )
     word_times = [{
         "word": word.word,
         "start": word.start,
@@ -33,6 +33,9 @@ def run_inpainter(input_text, output_text, word_times, audio, num_steps, init_te
 
 def run_inpainter_tts(input_text, voice_audio):
     return inpainter.tts(TTSInput(output_text=input_text, voice=voice_audio))
+
+def speech_rvc(rvc_speech,rvc_voice):
+    return inpainter.rvc(RVCInput(rvc_speech=rvc_speech,rvc_voice=rvc_voice))
 
 if __name__ == '__main__':
     with gr.Blocks(analytics_enabled=False, title="PlayDiffusion") as demo:
@@ -87,6 +90,23 @@ if __name__ == '__main__':
                 run_inpainter_tts,
                 inputs=[tts_text, tts_voice],
                 outputs=[tts_output]
+            )
+        
+        with gr.Tab("RVC"):
+            gr.Markdown("### Real time voice cloning (works best for english)")
+            rvc_speech =  gr.Audio(label="cloning speech",
+                sources=["upload", "microphone"], type="filepath",
+            )
+            rvc_voice =  gr.Audio(label="Voice to use for cloning",
+                sources=["upload", "microphone"], type="filepath",
+            )
+            rvc_submit = gr.Button("Convert to Speech")
+            rvc_output = gr.Audio(label="Generated Speech")
+
+            rvc_submit.click(
+                run_inpainter_tts,
+                inputs=[rvc_speech, rvc_voice],
+                outputs=[rvc_output]
             )
 
     demo.launch(share=True)
