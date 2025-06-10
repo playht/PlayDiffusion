@@ -1,6 +1,5 @@
-from typing import Dict, List
+from typing import Dict, List, Optional
 
-import torch
 from pydantic import BaseModel, Field
 
 class BaseInput(BaseModel):
@@ -42,6 +41,13 @@ class BaseInput(BaseModel):
         ge=1,
         le=100,
         description="Top-k for the inpainting process",
+    )
+    audio_token_syllable_ratio: Optional[float] = Field(
+        default=None,
+        ge=5.0,
+        le=25.0,
+        description="Ratio of audio tokens to syllables in the input text; if not provided, \
+            it will be calculated automatically",
     )
 
 

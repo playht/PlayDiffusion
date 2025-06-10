@@ -709,7 +709,10 @@ class PlayDiffusion():
         self.timer("Handle word times")
 
         # determine audio-token-to-syllable ratio (excluding long silences)
-        audio_token_syllable_ratio = self.calculate_audio_token_syllable_ratio(word_times)
+        if input.audio_token_syllable_ratio is not None:
+            audio_token_syllable_ratio = input.audio_token_syllable_ratio
+        else:
+            audio_token_syllable_ratio = self.calculate_audio_token_syllable_ratio(word_times)
         self.timer("Audio token to syllable ratio")
 
         # merge adjacent diff chunks and calculate static buffer to pass to inpainter
@@ -796,10 +799,9 @@ class PlayDiffusion():
                 self.timer("Tokenize")
 
                 # estimate the number of frames for the TTS result
+                ratio = input.audio_token_syllable_ratio or self.default_audio_token_syllable_ratio
                 n_syllables = syllables.estimate(text)
-                target_len = int(
-                    n_syllables * self.default_audio_token_syllable_ratio
-                )
+                target_len = int(n_syllables * ratio)
                 self.timer("Estimate frames")
 
                 # generate the TTS result
