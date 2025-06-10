@@ -5,10 +5,17 @@ from openai import OpenAI
 
 from playdiffusion import PlayDiffusion, InpaintInput, TTSInput, RVCInput
 
-whisper_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 inpainter = PlayDiffusion()
+_whisper_client = None
+
+def get_whisper_client():
+    global _whisper_client
+    if _whisper_client is None:
+        _whisper_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    return _whisper_client
 
 def run_asr(audio):
+    whisper_client = get_whisper_client()
     audio_file = open(audio, "rb")
     transcript = whisper_client.audio.transcriptions.create(
         file=audio_file,
