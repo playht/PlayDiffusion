@@ -34,12 +34,13 @@ dependencies = [
     "torchao==0.11.0",
     "huggingface-hub==0.31.4",
     "unidecode==1.4.0",
+    "openai-whisper>=20230314",
+    "whisper-timestamped>=0.0.11"
 ]
 
 [project.optional-dependencies]
 demo = [
-    "gradio==5.31.0",
-    "openai==1.82.0",
+    "gradio==5.31.0"
 ]
 
 [tool.hatch.build.targets.wheel]

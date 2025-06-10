@@ -1,9 +1,9 @@
 import os
 
 import gradio as gr
-from openai import OpenAI
 
 from playdiffusion import PlayDiffusion, InpaintInput, TTSInput, RVCInput
+import whisper_timestamped as whisper
 
 inpainter = PlayDiffusion()
 _whisper_client = None
@@ -11,25 +11,29 @@ _whisper_client = None
 def get_whisper_client():
     global _whisper_client
     if _whisper_client is None:
-        _whisper_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        _whisper_client = whisper
     return _whisper_client
 
-def run_asr(audio):
-    whisper_client = get_whisper_client()
-    audio_file = open(audio, "rb")
-    transcript = whisper_client.audio.transcriptions.create(
-        file=audio_file,
-        model="whisper-1",
-        response_format="verbose_json",
-        timestamp_granularities=["word"]
-    )
-    word_times = [{
-        "word": word.word,
-        "start": word.start,
-        "end": word.end
-    } for word in transcript.words]
+def run_asr(audio, asr_model="turbo"):
+     # Load audio locally
+    audio = whisper.load_audio(audio)
+    # Load model (you can choose model size here)
+    model = whisper.load_model(asr_model)
+    # Transcribe audio with word-level timestamps
+    transcript = whisper.transcribe(model, audio, language="en")
+    # Extract full transcript text
+    transcript_text = transcript.get("text", "")
+    # Extract word timestamps
+    word_times = []
+    for segment in transcript.get("segments", []):
+        for word in segment.get("words", []):
+            word_times.append({
+                "word": word["text"],
+                "start": word["start"],
+                "end": word["end"]
+            })
 
-    return transcript.text, transcript.text, word_times
+    return transcript_text, transcript_text, word_times
 
 def run_inpainter(input_text, output_text, word_times, audio, num_steps, init_temp, init_diversity, guidance, rescale, topk, use_manual_ratio, audio_token_syllable_ratio):
     if not use_manual_ratio:
