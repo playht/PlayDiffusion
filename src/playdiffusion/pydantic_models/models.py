@@ -74,3 +74,12 @@ class TTSInput(BaseInput):
     voice: str = Field(
         description="URL to the voice resource to use for TTS",
     )
+
+class RVCInput(BaseModel):
+    source_speech: str = Field(
+        description="URL to the voice resource to use for speech semantics",
+    )
+    target_voice: str = Field(
+        description="URL to the target voice",
+    )
+

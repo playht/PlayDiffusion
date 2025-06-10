@@ -4,7 +4,7 @@ import re
 import gradio as gr
 from openai import OpenAI
 
-from playdiffusion import PlayDiffusion, InpaintInput, TTSInput
+from playdiffusion import PlayDiffusion, InpaintInput, TTSInput, RVCInput
 from playdiffusion.utils.audio_utils import raw_audio_to_torch_audio
 from playdiffusion.utils.save_audio import make_16bit_pcm
 from playdiffusion.utils.voice_resource import VoiceResource
@@ -73,6 +73,9 @@ def create_advanced_options_accordion():
             use_manual_ratio, audio_token_syllable_ratio)
 
 
+def speech_rvc(rvc_source_speech, rvc_target_voice):
+    return inpainter.rvc(RVCInput(source_speech=rvc_source_speech, target_voice=rvc_target_voice))
+
 if __name__ == '__main__':
     with gr.Blocks(analytics_enabled=False, title="PlayDiffusion") as demo:
         gr.Markdown("## PlayDiffusion")
@@ -125,6 +128,23 @@ if __name__ == '__main__':
                 run_inpainter_tts,
                 inputs=[tts_text, tts_voice] + list(tts_advanced_options),
                 outputs=[tts_output]
+            )
+        
+        with gr.Tab("Voice Conversion"):
+            gr.Markdown("### Real Time Voice Conversion (works best for english)")
+            rvc_source_speech =  gr.Audio(label="Source Conversion Speech",
+                sources=["upload", "microphone"], type="filepath",
+            )
+            rvc_target_voice =  gr.Audio(label="Target Voice",
+                sources=["upload", "microphone"], type="filepath",
+            )
+            rvc_submit = gr.Button("Real time Voice Conversion")
+            rvc_output = gr.Audio(label="Converted Speech")
+
+            rvc_submit.click(
+                speech_rvc,
+                inputs=[rvc_source_speech, rvc_target_voice],
+                outputs=[rvc_output]
             )
 
     demo.launch(share=True)
