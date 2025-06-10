@@ -1,13 +1,9 @@
 import os
-import re
 
 import gradio as gr
 from openai import OpenAI
 
 from playdiffusion import PlayDiffusion, InpaintInput, TTSInput, RVCInput
-from playdiffusion.utils.audio_utils import raw_audio_to_torch_audio
-from playdiffusion.utils.save_audio import make_16bit_pcm
-from playdiffusion.utils.voice_resource import VoiceResource
 
 whisper_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 inpainter = PlayDiffusion()
@@ -129,7 +125,7 @@ if __name__ == '__main__':
                 inputs=[tts_text, tts_voice] + list(tts_advanced_options),
                 outputs=[tts_output]
             )
-        
+
         with gr.Tab("Voice Conversion"):
             gr.Markdown("### Real Time Voice Conversion (works best for english)")
             rvc_source_speech =  gr.Audio(label="Source Conversion Speech",
