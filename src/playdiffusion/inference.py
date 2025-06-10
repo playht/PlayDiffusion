@@ -822,21 +822,19 @@ class PlayDiffusion():
         return (self.mm.vocoder.output_frequency, make_16bit_pcm(audio_g).squeeze())
 
     def rvc(self, input: RVCInput):
-        import jiwer
         import torch
         import torchaudio.functional as F
-        from unidecode import unidecode
 
         self.timer.reset()
 
         print(f"Input: {input}")
         
-        # extract xlsr audio tokens
-        vocoder_emb = get_vocoder_embedding(input.rvc_voice, self.mm).to(self.device)
+        # get target voice's vocoder_emb
+        vocoder_emb = get_vocoder_embedding(input.target_voice, self.mm).to(self.device)
         self.timer("Get vocoder embedding")
 
         # extract xlsr audio tokens
-        input_wav, sr = load_audio(input.rvc_speech, self.device)
+        input_wav, sr = load_audio(input.source_speech, self.device)
         self.timer("Load audio")
         resampled_wav = F.resample(
             input_wav, orig_freq=sr, new_freq=self.mm.speech_tokenizer_sample_rate
@@ -854,4 +852,5 @@ class PlayDiffusion():
         with torch.inference_mode():
             audio_g = self.mm.vocoder(input_audio_tokens, vocoder_emb)
         self.timer("Vocoder")
+
         return (self.mm.vocoder.output_frequency, make_16bit_pcm(audio_g).squeeze())

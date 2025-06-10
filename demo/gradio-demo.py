@@ -34,8 +34,8 @@ def run_inpainter(input_text, output_text, word_times, audio, num_steps, init_te
 def run_inpainter_tts(input_text, voice_audio):
     return inpainter.tts(TTSInput(output_text=input_text, voice=voice_audio))
 
-def speech_rvc(rvc_speech,rvc_voice):
-    return inpainter.rvc(RVCInput(rvc_speech=rvc_speech,rvc_voice=rvc_voice))
+def speech_rvc(rvc_source_speech, rvc_target_voice):
+    return inpainter.rvc(RVCInput(source_speech=rvc_source_speech, target_voice=rvc_target_voice))
 
 if __name__ == '__main__':
     with gr.Blocks(analytics_enabled=False, title="PlayDiffusion") as demo:
@@ -92,20 +92,20 @@ if __name__ == '__main__':
                 outputs=[tts_output]
             )
         
-        with gr.Tab("RVC"):
-            gr.Markdown("### Real time voice cloning (works best for english)")
-            rvc_speech =  gr.Audio(label="cloning speech",
+        with gr.Tab("Voice Conversion"):
+            gr.Markdown("### Real Time Voice Conversion (works best for english)")
+            rvc_source_speech =  gr.Audio(label="Source Conversion Speech",
                 sources=["upload", "microphone"], type="filepath",
             )
-            rvc_voice =  gr.Audio(label="Voice to use for cloning",
+            rvc_target_voice =  gr.Audio(label="Target Voice",
                 sources=["upload", "microphone"], type="filepath",
             )
-            rvc_submit = gr.Button("Real time Speech Cloning")
-            rvc_output = gr.Audio(label="Cloned Speech")
+            rvc_submit = gr.Button("Real time Voice Conversion")
+            rvc_output = gr.Audio(label="Converted Speech")
 
             rvc_submit.click(
                 speech_rvc,
-                inputs=[rvc_speech, rvc_voice],
+                inputs=[rvc_source_speech, rvc_target_voice],
                 outputs=[rvc_output]
             )
 

@@ -70,10 +70,10 @@ class TTSInput(BaseInput):
     )
 
 class RVCInput(BaseModel):
-    rvc_speech: str = Field(
+    source_speech: str = Field(
         description="URL to the voice resource to use for speech semantics",
     )
-    rvc_voice: str = Field(
-        description="URL to the voice resource to use for voice cloning",
+    target_voice: str = Field(
+        description="URL to the target voice",
     )
 
