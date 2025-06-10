@@ -22,7 +22,9 @@ podman build -t playdiffusion-py:latest .
 ```
 podman run -it --rm \
   --device nvidia.com/gpu=all \
-  -v ~/.cache/huggingface:/app/.cache/huggingface \
+  --network=host \
+  -v $HOME/.cache/huggingface:/app/.cache/huggingface \
+  -v $HOME/.cache/whisper:$HOME/.cache/whisper \
   -p 7860:7860 \
   playdiffusion-py:latest
 ```
@@ -36,7 +38,9 @@ docker build -t playdiffusion-py:latest .
 ```
 docker run -it --rm \
   --gpus all \
-  -v ~/.cache/huggingface:/app/.cache/huggingface \
+  --network=host \
+  -v $HOME/.cache/huggingface:/app/.cache/huggingface \
+  -v $HOME/.cache/whisper:$HOME/.cache/whisper
   -p 7860:7860 \
   playdiffusion-py:latest
 ```
