@@ -17,7 +17,7 @@ RUN apt-get update && apt-get install -y \
 RUN git lfs install
 
 # Install PlayDiffusion
-RUN git clone https://github.com/hanifalisohag/PlayDiffusion /app/PlayDiffusion
+RUN git clone https://github.com/playht/PlayDiffusion /app/PlayDiffusion
 
 # Set working dir inside repo
 WORKDIR /app/PlayDiffusion
