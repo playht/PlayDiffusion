@@ -24,7 +24,9 @@ WORKDIR /app/PlayDiffusion
 
 # Upgrade pip and install dependencies (including demo)
 RUN pip install --upgrade pip && \
-    pip install '.[demo]'# Create HuggingFace cache mount path
+    pip install '.[demo]'
+
+# Create HuggingFace cache mount path
 ENV HF_HOME=/app/.cache/huggingface
 
 # Expose default gradio port
