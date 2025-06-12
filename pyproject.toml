@@ -40,6 +40,8 @@ dependencies = [
 demo = [
     "gradio==5.31.0",
     "openai==1.82.0",
+    "openai-whisper>=20230314",
+    "whisper-timestamped>=0.0.11",
 ]
 
 [tool.hatch.build.targets.wheel]
