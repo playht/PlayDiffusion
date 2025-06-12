@@ -7,39 +7,40 @@ from playdiffusion import PlayDiffusion, InpaintInput, TTSInput, RVCInput
 import whisper_timestamped as whisper
 
 inpainter = PlayDiffusion()
-_openai_client = None
-_local_whisper_client = None
 
-def get_whisper_client(backend_choice):
-    global _openai_client, _local_whisper_client
+def get_whisper_client(backend_choice,api_key):
     if backend_choice == "OpenAI Whisper API":
-        if _openai_client is None:
-            _openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        return _openai_client
+        if not api_key or not api_key.strip():
+            raise gr.Error("OpenAI API key is required and cannot be empty.")
+        else:
+            _whisper_client = OpenAI(api_key=api_key.strip())
     else:
-        if _local_whisper_client is None:
-            _local_whisper_client = whisper
-        return _local_whisper_client
+        _whisper_client = whisper
     
-def run_asr(audio, backend_choice="Local Whisper", local_model="tiny"):
+    return _whisper_client
+    
+def run_asr(audio, backend_choice="Local Whisper", local_model="tiny",api_key=""):
     if audio is None:
-        return "No audio provided.", "", []
-    whisper_client = get_whisper_client(backend_choice)
+        raise gr.Error("Please upload or record an audio file before running ASR.")
+    whisper_client = get_whisper_client(backend_choice,api_key)
 
     if backend_choice == "OpenAI Whisper API":
-        with open(audio, "rb") as audio_file:
-            transcript = whisper_client.audio.transcriptions.create(
-                file=audio_file,
-                model="whisper-1",
-                response_format="verbose_json",
-                timestamp_granularities=["word"]
-            )
-        word_times = [{
-            "word": word.word,
-            "start": word.start,
-            "end": word.end
-        } for word in transcript.words]
-        return transcript.text, transcript.text, word_times
+        try:
+            with open(audio, "rb") as audio_file:
+                transcript = whisper_client.audio.transcriptions.create(
+                    file=audio_file,
+                    model="whisper-1",
+                    response_format="verbose_json",
+                    timestamp_granularities=["word"]
+                )
+            word_times = [{
+                "word": word.word,
+                "start": word.start,
+                "end": word.end
+            } for word in transcript.words]
+            return transcript.text, transcript.text, word_times
+        except Exception as e:
+            raise gr.Error(f"Failed to call OpenAI Whisper API: {e}")
     else:
         audio_data = whisper_client.load_audio(audio)
         model = whisper_client.load_model(local_model)
@@ -103,8 +104,6 @@ def create_advanced_options_accordion():
 def speech_rvc(rvc_source_speech, rvc_target_voice):
     return inpainter.rvc(RVCInput(source_speech=rvc_source_speech, target_voice=rvc_target_voice))
 
-def toggle_model_visibility(backend):
-    return gr.update(visible=(backend == "Local Whisper"), interactive=(backend == "Local Whisper"))
 
 
 if __name__ == '__main__':
@@ -123,6 +122,14 @@ if __name__ == '__main__':
                 asr_backend = gr.Radio(
                     ["Local Whisper", "OpenAI Whisper API"], value="Local Whisper", label="ASR Backend"
                 )
+
+                openai_api_key = gr.Textbox(
+                    label="OpenAI API Key",
+                    type="password",
+                    placeholder="Enter your OpenAI API key here",
+                    visible=False
+                )
+                
                 whisper_model = gr.Dropdown(
                     ["tiny", "base", "small", "medium", "large", "turbo"],
                     value="tiny",
@@ -149,9 +156,16 @@ if __name__ == '__main__':
             with gr.Row():
                 audio_output = gr.Audio(label="Output audio")
 
+            # Show/hide OpenAI key or local model selection
+            def toggle_asr_inputs(backend_choice):
+                return {
+                    openai_api_key: gr.update(visible=(backend_choice == "OpenAI Whisper API"),interactive=(backend_choice == "OpenAI Whisper API")),
+                    whisper_model: gr.update(visible=(backend_choice == "Local Whisper"),interactive=(backend_choice == "Local Whisper")),
+                }
+
             asr_submit.click(
                 run_asr,
-                inputs=[audio_input, asr_backend, whisper_model],
+                inputs=[audio_input, asr_backend, whisper_model,openai_api_key],
                 outputs=[text_input, text_output, word_times]
             )
             inpainter_submit.click(
@@ -160,9 +174,9 @@ if __name__ == '__main__':
                 outputs=[audio_output])
             
             asr_backend.change(
-                toggle_model_visibility,
-                inputs=asr_backend,
-                outputs=whisper_model
+                toggle_asr_inputs,
+                inputs=[asr_backend],
+                outputs=[openai_api_key,whisper_model]
             )
 
         with gr.Tab("Text to Speech"):
