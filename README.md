@@ -24,12 +24,12 @@ Requires OPENAI_API_KEY env var for ASR and word timings--you can also use some 
 
 Autoregressive transformer models have proven highly effective for synthesizing speech from text. However, they face a significant limitation: **modifying portions of the generated audio —known as inpainting— or removing them without leaving discontinuity artifacts is beyond their standard capabilities**. Thus different approaches are needed for more general speech editing tools. Consider the sentence:
 
-> *“The answer is out there, Neo. Go grab it!”*
+> *“The answer is out there, Neo. It's looking for you.”*
 
-Now suppose you want to change 🔴 "Neo" to 🟢 "Trinity" *after* generation. With traditional AR models, your options are limited.
+Now suppose you want to change 🔴 "Neo" to 🟢 "Morpheus" *after* generation. With traditional AR models, your options are limited.
 - **Regenerate the entire sentence**, which is computationally expensive and often leads to variations in prosody or speech rhythm.
 - **Replace just the word “Neo”**, which results in noticeable artifacts or mismatches at word boundaries.
-- **Regenerate from a midway point**, e.g., from “Trinity. Go grab it!”, but this has the potential of changing the prosody of the unedited part ("Go grab it"), creating unwanted variations in the speech rhythm.
+- **Regenerate from a midway point**, e.g., from “Morpheus. It's looking for you.”, but this has the potential of changing the prosody of the unedited part ("It's looking for you."), creating unwanted variations in the speech rhythm.
 
 All of these approaches compromise both the coherence and naturalness of the audio. Instead, for these type of speech editing tools, non-autoregressive approaches are favorable [[1](https://arxiv.org/pdf/2401.04577), [2](https://arxiv.org/pdf/2305.09636)].
 
