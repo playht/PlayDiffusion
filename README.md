@@ -48,8 +48,9 @@ By using a **non-autoregressive diffusion model**, we can better maintain contex
 
 The full process is outlined in Figure 1.
 
-![Image](https://github.com/user-attachments/assets/16f783cd-c9c5-4c60-aabc-c57dc4b1f894)
-> **Figure 1.** PlayDiffusion Model. 1) The input audio containing the speech “The answer is out there Neo. Go grab it!” is encoded to discrete audio tokens. 2) The tokens that corresponds to the speech targeted for editing is masked. Here we mask the tokens for “Neo”. 3) Given the updated text and the full input token sequence (i.e., masked and unmasked) the PlayDiffusion model generates the edited output sequence. 4) The sequence is transformed to a waveform by our BigVGAN, conditioned on the speaker embedding extracted from the original clip.
+![Image](https://framerusercontent.com/images/GgCrdo9t74j0vxz1x4CxKoaagA.jpg?scale-down-to=4096)
+
+> **Figure 1.** PlayDiffusion Model. 1) The input audio containing the speech “The answer is out there Neo. It's looking for you.” is encoded to discrete audio tokens. 2) The tokens that corresponds to the speech targeted for editing is masked. Here we mask the tokens for “Neo”. 3) Given the updated text and the full input token sequence (i.e., masked and unmasked) the PlayDiffusion model generates the edited output sequence. 4) The sequence is transformed to a waveform by our BigVGAN, conditioned on the speaker embedding extracted from the original clip.
 
 ## Training
 
