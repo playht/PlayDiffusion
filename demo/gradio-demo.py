@@ -16,9 +16,9 @@ def get_whisper_client(backend_choice,api_key):
             _whisper_client = OpenAI(api_key=api_key.strip())
     else:
         _whisper_client = whisper
-    
+
     return _whisper_client
-    
+
 def run_asr(audio, backend_choice="Local Whisper", local_model="tiny",api_key=""):
     if audio is None:
         raise gr.Error("Please upload or record an audio file before running ASR.")
@@ -129,7 +129,7 @@ if __name__ == '__main__':
                     placeholder="Enter your OpenAI API key here",
                     visible=False
                 )
-                
+
                 whisper_model = gr.Dropdown(
                     ["tiny", "base", "small", "medium", "large", "turbo"],
                     value="tiny",
@@ -172,7 +172,7 @@ if __name__ == '__main__':
                 run_inpainter,
                 inputs=[text_input, text_output, word_times, audio_input] + list(inpaint_advanced_options),
                 outputs=[audio_output])
-            
+
             asr_backend.change(
                 toggle_asr_inputs,
                 inputs=[asr_backend],
