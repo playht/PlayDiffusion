@@ -8,10 +8,10 @@ https://github.com/user-attachments/assets/5b15f9d5-cb53-450f-84f6-5f7dda3e44e5
 
 Requires OPENAI_API_KEY env var for ASR and word timings--you can also use some other source for these.
 
-1. Set up virtualenv: `python3.11 -m venv .venv`
+1. Set up virtualenv: `python3.11 -m venv .venv` or `uv venv`
 2. Activate virutalenv: `source .venv/bin/activate`
-3. Install package and dependencies: `pip install '.[demo]'`
-4. Run demo: `python demo/gradio-demo.py`
+3. Install package and dependencies: `pip install '.[demo]'` or `uv sync --extra demo`
+4. Run demo: `python demo/gradio-demo.py` or `uv run demo/gradio-demo.py`
 
 ## Docker / Podman
 
