@@ -1,11 +1,10 @@
 import numpy as np
 import torch
-from fairseq2.typing import DataType, Device
 from torch import Tensor, nn
 
 
 class KmeansModel(nn.Module):
-    def __init__(self, km_path: str, device: Device, dtype: DataType):
+    def __init__(self, km_path: str, device: torch.device, dtype: torch.dtype):
         super().__init__()
         km_model = np.load(km_path)
         centroids_numpy = km_model.transpose()

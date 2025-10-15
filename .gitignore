@@ -1,1 +1,6 @@
 .venv/*
+*.pyc
+checkpoint*/*
+.gradio/certificate.pem
+.python-version
+*.wav

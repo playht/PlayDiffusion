@@ -698,7 +698,7 @@ class PlayDiffusion():
         print(f"Resampled wav: {resampled_wav.shape}")
         self.timer("Resample")
         with torch.inference_mode():
-            input_audio_tokens = self.mm.speech_tokenizer.waveform_to_units(
+            input_audio_tokens, _ = self.mm.speech_tokenizer.waveform_to_units(
                 resampled_wav.squeeze()
             )
         print(f"Input audio tokens: {input_audio_tokens.shape}")
@@ -844,7 +844,7 @@ class PlayDiffusion():
         print(f"Resampled wav: {resampled_wav.shape}")
         self.timer("Resample")
         with torch.inference_mode():
-            input_audio_tokens = self.mm.speech_tokenizer.waveform_to_units(
+            input_audio_tokens, _ = self.mm.speech_tokenizer.waveform_to_units(
                 resampled_wav.squeeze()
             )
         print(f"Input audio tokens: {input_audio_tokens.shape}")

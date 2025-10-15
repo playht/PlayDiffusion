@@ -1,14 +1,13 @@
 from typing import Tuple, Union
 
-from fairseq2.models.wav2vec2._factory import (
+from fairseq2.models.wav2vec2 import (
      Wav2Vec2Factory,
      Wav2Vec2Config,
      Wav2Vec2EncoderConfig,
+     Wav2Vec2Model
 )
-from fairseq2.models.wav2vec2._model import Wav2Vec2Model
-from fairseq2.nn.transformer import TransformerNormOrder
-from fairseq2.typing import DataType, Device
-
+from fairseq2.models.transformer import TransformerNormOrder
+import torch
 
 def _encoder_xlsr2_1b_v2() -> Wav2Vec2EncoderConfig:
     """
@@ -28,7 +27,7 @@ def _encoder_xlsr2_1b_v2() -> Wav2Vec2EncoderConfig:
         feature_extractor_layer_descs=layer_descs,  # type: ignore
         feature_extractor_bias=True,
         feature_extractor_layer_norm_convs=True,
-        feature_gradient_scale=1.0,
+        feature_grad_scale=1.0,
         num_fbank_channels=0,
         fbank_stride=0,
         sample_fbank_every_k=0,
@@ -74,7 +73,7 @@ def _xlsr2_1b_v2() -> Wav2Vec2Config:
 
 
 def load_xlsr_encoder(
-    device: Device, dtype: DataType, max_layer: Union[int, None] = 35
+    device: torch.device, dtype: torch.dtype, max_layer: Union[int, None] = 35
 ) -> Tuple[Wav2Vec2Model, Wav2Vec2Config, Wav2Vec2EncoderConfig]:
     """
     build_xlsr_1b_v2
