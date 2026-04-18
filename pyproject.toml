@@ -16,7 +16,7 @@ dependencies = [
     "torchaudio==2.6.0",
     "numpy==1.24.3",
     "fairseq2==0.4.4",
-    "nltk==3.9.1",
+    "nltk==3.9.4",
     "syllables @ git+https://github.com/playht/python-syllables.git",
     "jiwer==3.1.0",
     "pydantic==2.11.5",
