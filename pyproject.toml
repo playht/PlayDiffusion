@@ -12,7 +12,7 @@ description = "Diffusion model for speech inpainting and TTS"
 requires-python = "==3.11.*"
 license = { text = "Apache-2.0" }
 dependencies = [
-    "torch==2.6.0",
+    "torch==2.12.0",
     "torchaudio==2.6.0",
     "numpy==1.24.3",
     "fairseq2==0.4.4",
